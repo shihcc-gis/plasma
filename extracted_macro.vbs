@@ -366,6 +366,7 @@ Rem Write, on EXCEL Sheet, in convenient real units, the step-by-step data from 
 774 ActiveSheet.Cells(rowj, 4) = ZR
 775 ActiveSheet.Cells(rowj, 5) = ZZR
 ActiveSheet.Cells(rowj, 52) = TR
+Rem plasma I
 ActiveSheet.Cells(rowj, 53) = IR * CURRF
 ActiveSheet.Cells(rowj, 61) = Lz * 10 ^ 9
 ActiveSheet.Cells(rowj, 62) = 100 * Einductance / (0.5 * C0 * V0 * V0)
