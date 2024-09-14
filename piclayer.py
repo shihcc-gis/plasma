@@ -29,7 +29,7 @@ from scipy.constants import c, m_e, m_p, e
 from fbpic.main import Simulation
 from fbpic.lpa_utils.external_fields import ExternalField
 from fbpic.lpa_utils.boosted_frame import BoostConverter
-from fbpic.openpmd_diag import ParticleDiagnostic, \
+from fbpic.openpmd_diag import ParticleDiagnostic, FieldDiagnostic,\
     BackTransformedParticleDiagnostic
 # Import openPMD-viewer for checking output files
 #from openpmd_viewer import OpenPMDTimeSeries
@@ -64,7 +64,7 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
     p_zmax = 3.e-4
     p_rmin = 0.      # Minimal radial position of the plasma (meters)
     p_rmax = 3.e-4 # Maximal radial position of the plasma (meters)
-    n_atoms = 0.2    # The atomic density is chosen very low,
+    n_atoms = 0.6    # The atomic density is chosen very low,
                      # to avoid collective effects
     p_nz = 2         # Number of particles per cell along z
     p_nr = 1         # Number of particles per cell along r
@@ -76,7 +76,7 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
     beta_boost = np.sqrt( 1. - 1./gamma_boost**2 )
     zmin, zmax = boost.static_length( [zmin_lab, zmax_lab] )
     p_zmin, p_zmax = boost.static_length( [p_zmin, p_zmax] )
-    n_atoms, = boost.static_density( [n_atoms] )
+    #n_atoms, = boost.static_density( [n_atoms] )
     # Increase the number of particles per cell in order to keep sufficient
     # statistics for the evaluation of the ionization fraction
     if gamma_boost > 1:
@@ -100,6 +100,10 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
         """
         return( F + amplitude * math.cos( 2*np.pi*(z-c*t)/lambda0 ) * \
                 math.exp( - (z - c*t - z0)**2/ctau**2 ) )
+
+    #simple E field across x-axis
+    def Exfield(F, x, y, z, t, amplitude, length_scale ):
+        return(F+1.2)
 
     # Resolution and number of timesteps
     dz = lambda0/16.
@@ -152,16 +156,19 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
     sim.set_moving_window( v=v_plasma )
 
     # Add a laser to the fields of the simulation (external fields)
-    #sim.external_fields = [
-    #    ExternalField( laser_func, 'Ex', E0, 0. ),
-    #    ExternalField( laser_func, 'By', B0, 0. ) ]
+    sim.external_fields = [
+        ExternalField( Exfield, 'Ex', E0, 0. )]
+        
+        #ExternalField( laser_func, 'By', B0, 0. ) ]
 
     # Add a particle diagnostic
     sim.diags = [ ParticleDiagnostic( diag_period, {"ions":ions, "electrons": elec},
         particle_data=["position", "momentum", "E", "B"],
         # Test output of fields and gamma for standard
         # (non-boosted) particle diagnostics
-        write_dir='tests/diags', comm=sim.comm) ]
+        write_dir='tests/diags', comm=sim.comm),
+        FieldDiagnostic( diag_period, sim.fld, comm=sim.comm )
+          ]
     if gamma_boost > 1:
         T_sim_lab = (2.*40.*lambda0_lab + zmax_lab-zmin_lab)/c
         sim.diags.append(
