@@ -57,18 +57,19 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
     zmin_lab = 0.
     Nr = 30         # Number of gridpoints along r
     rmax = 5.e-4    # Length of the box along r (meters), a0
-    Nm = 2           # Number of modes used
+    Nm = 1           # Number of modes used
 
     # The particles of the plasma
     p_zmin = 1.e-4   # Position of the beginning of the plasma (meters)
     p_zmax = 3.e-4
     p_rmin = 0.      # Minimal radial position of the plasma (meters)
-    p_rmax = 3.e-4 # Maximal radial position of the plasma (meters)
+    p_rmax = 2.e-4 # Maximal radial position of the plasma (meters)
     n_atoms = 0.6    # The atomic density is chosen very low,
                      # to avoid collective effects
-    p_nz = 2         # Number of particles per cell along z
-    p_nr = 1         # Number of particles per cell along r
-    p_nt = 4         # Number of particles per cell along theta
+    n_focus = 1.5e23
+    p_nz = 10         # Number of particles per cell along z
+    p_nr = 10         # Number of particles per cell along r
+    p_nt = 10        # Number of particles per cell along theta
 
     # Boosted frame
     boost = BoostConverter(gamma_boost)
@@ -127,13 +128,13 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
         boundaries={'z':'open', 'r':'reflective'}, use_cuda=use_cuda )
 
     # Add the charge-neutralizing electrons
-    elec = sim.add_new_species( q=-e, m=m_e, n=level_start*n_atoms,
+    elec = sim.add_new_species( q=-e, m=m_e, n=level_start*n_focus,
                         p_nz=p_nz, p_nr=p_nr, p_nt=p_nt,
                         p_zmin=p_zmin, p_zmax=p_zmax,
                         p_rmin=p_rmin, p_rmax=p_rmax,
                         continuous_injection=False, uz_m=uz_m )
     # Add the N atoms -- converted to H ions
-    ions = sim.add_new_species( q=e, m=m_p, n=n_atoms,
+    ions = sim.add_new_species( q=e, m=m_p, n=n_focus,
                         p_nz=p_nz, p_nr=p_nr, p_nt=p_nt,
                         p_zmin=p_zmin, p_zmax=p_zmax,
                         p_rmin=p_rmin, p_rmax=p_rmax,
@@ -163,11 +164,12 @@ def run_simulation( gamma_boost, use_separate_electron_species ):
 
     # Add a particle diagnostic
     sim.diags = [ ParticleDiagnostic( diag_period, {"ions":ions, "electrons": elec},
-        particle_data=["position", "momentum", "E", "B"],
+        #particle_data=["position", "momentum", "E", "B"],
+         particle_data=["position", "momentum"],
         # Test output of fields and gamma for standard
         # (non-boosted) particle diagnostics
-        write_dir='tests/diags', comm=sim.comm),
-        FieldDiagnostic( diag_period, sim.fld, comm=sim.comm )
+        write_dir='tests/diags', comm=sim.comm)
+        #FieldDiagnostic( diag_period, sim.fld, comm=sim.comm )
           ]
     if gamma_boost > 1:
         T_sim_lab = (2.*40.*lambda0_lab + zmax_lab-zmin_lab)/c
